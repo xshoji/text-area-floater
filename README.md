@@ -1,139 +1,139 @@
 # TextAreaFloater
 
-常に最前面に浮くシンプルなテキストエリア。入力したテキストを任意のアプリへ送信できる macOS 専用アプリ。
+A simple text area that always floats on top. A macOS-only app that lets you send (paste) the text you type into any other application.
 
-## 解決する課題
+## Problem it solves
 
-ターミナルなど一部のアプリはテキスト入力が使いにくい:
+Some applications, such as terminals, make text input awkward:
 
-- カーソル移動ができない
-- 選択して削除ができない
-- 改行に Shift が必要
+- No cursor movement
+- No select-and-delete
+- Shift required for newlines
 
-このアプリで自由に編集してから、対象アプリへテキストを送信（ペースト）できる。
+With this app you can edit freely first, then send the text to the target application (via paste).
 
-## 使い方
+## Usage
 
 ```bash
 ./build.sh
 open build/TextAreaFloater.app
 ```
 
-### 操作
+### Operation
 
-1. 最前面に浮いたパネルへテキストを入力
-    - Enter: 改行（Shift 不要）
-    - カーソル移動・選択・削除: 通常のテキストエリアと同じ
-2. 送信先をドロップダウンで選択（デフォルト「前面のアプリ」）
-3. `Cmd + Enter` または「送信」ボタンで送信
-    - 対象アプリがアクティブ化され、クリップボード経由でペーストされる
-    - 元のクリップボード内容は復元される
+1. Type text into the panel that floats on top
+    - Enter: newline (no Shift needed)
+    - Cursor movement, selection, deletion: same as a normal text area
+2. Select the destination from the dropdown (default: "Frontmost App")
+3. Send with `Cmd + Enter` or the "Send" button
+    - The target app is activated and the text is pasted via the clipboard
+    - The original clipboard contents are restored
 
-### 選択範囲のみ送信
+### Send only the selection
 
-テキストの一部を選択した状態で送信すると、**選択範囲だけ**が送信される。選択なしの場合は全体が送信される。
+If you send while part of the text is selected, **only the selection** is sent. With no selection, the entire text is sent.
 
-### Enter 確定オプション
+### Enter confirm option
 
-右下の「Enter」トグルをオンにすると、ペースト後に Enter キーを送信する。ターミナル等でコマンドを即実行したい場合に便利。
+Turn on the "Enter" toggle in the lower-right corner to send an Enter key after pasting. Handy when you want to execute a command immediately in a terminal.
 
-### グローバルホットキー
+### Global hotkey
 
-右下の ⌨ アイコンからホットキーを設定できる。デフォルトは未設定。
+You can set a hotkey from the ⌨ icon in the lower-right corner. Default is unset.
 
-1. ⌨ アイコンをクリック
-2. popover が開くので、任意のキー combo を押す（例: `Cmd+Shift+J`）
-3. 設定されると ⌨ アイコンに combo が表示される
-4. 以降、どのアプリが前面にいてもその combo でパネルの表示/非表示をトグル
+1. Click the ⌨ icon
+2. A popover opens; press any key combo (e.g. `Cmd+Shift+J`)
+3. Once set, the combo is shown on the ⌨ icon
+4. From then on, that combo toggles the panel visibility regardless of which app is frontmost
 
-Esc でキャンセル。
+Press Esc to cancel.
 
-### ウィンドウ操作
+### Window controls
 
-- **移動**: 上部の余白をドラッグ
-- **リサイズ**: 右端・下端をドラッグ
-- **最小サイズ**: 幅 200px / 高さ 60px
+- **Move**: drag the padding area at the top
+- **Resize**: drag the right or bottom edge
+- **Minimum size**: 200px wide / 60px tall
 
-### 権限
+### Permissions
 
-初回起動時にシステム設定で以下を許可する必要がある:
+On first launch, allow the following in System Settings:
 
-- **アクセシビリティ (Accessibility)**: AppleScript で他アプリを操作・ペーストするため
-    - システム設定 > プライバシーとセキュリティ > アクセシビリティ
-    - `TextAreaFloater` をオンにする
-- **入力監視 (Input Monitoring)**: グローバルホットキー用（ホットキー設定時のみ必要）
-    - システム設定 > プライバシーとセキュリティ > 入力監視
+- **Accessibility**: to operate and paste into other apps via AppleScript
+    - System Settings > Privacy & Security > Accessibility
+    - Turn on `TextAreaFloater`
+- **Input Monitoring**: for the global hotkey (only needed when you set a hotkey)
+    - System Settings > Privacy & Security > Input Monitoring
 
-許可後はアプリを再起動する。
+Restart the app after granting permission.
 
-## 技術構成
+## Technical stack
 
-| 層 | 技术 | 役割 |
+| Layer | Technology | Role |
 |---|---|---|
-| UI | SwiftUI (`TextEditor`, `Picker`, `Toggle`, `Button`) | テキスト編集・送信先選択・オプション |
-| テキストエディタ | AppKit (`NSTextView` via `NSViewRepresentable`) | 余白ゼロ・背景クリアのプレーンエディタ |
-| ウィンドウ | AppKit (`NSPanel`, borderless) | 常に最前面・他アプリ操作中でも入力可能・ヘッダーなし |
-| ウィンドウ操作 | AppKit (`NSView` drag/resize) | 上部ドラッグ移動・右端/下端リサイズ |
-| 送信 | AppleScript (`NSAppleScript` + System Events) | メニューバー「Paste」クリック、フォールバックで `keystroke` |
-| Enter 確定 | AppleScript (`keystroke return`) | ペースト後に Enter を送信 |
-| グローバルホットキー | Carbon (`RegisterEventHotKey`) | 任意の combo でパネル表示トグル |
-| アプリ選択 | `NSWorkspace` | 実行中アプリ一覧・アクティブ化 |
-| クリップボード | `NSPasteboard` | テキスト受け渡し・退避復元 |
+| UI | SwiftUI (`TextEditor`, `Picker`, `Toggle`, `Button`) | Text editing, destination selection, options |
+| Text editor | AppKit (`NSTextView` via `NSViewRepresentable`) | Zero-padding, clear-background plain editor |
+| Window | AppKit (`NSPanel`, borderless) | Always on top, accepts input while other apps are active, no header |
+| Window controls | AppKit (`NSView` drag/resize) | Top-drag move, right/bottom-edge resize |
+| Send | AppleScript (`NSAppleScript` + System Events) | Click "Paste" in the menu bar, fall back to `keystroke` |
+| Enter confirm | AppleScript (`keystroke return`) | Send Enter after paste |
+| Global hotkey | Carbon (`RegisterEventHotKey`) | Toggle panel with any combo |
+| App selection | `NSWorkspace` | List running apps, activate |
+| Clipboard | `NSPasteboard` | Pass text, save/restore |
 
-### 設計のポイント
+### Design notes
 
-- **`NSPanel` + `nonactivatingPanel` + `level = .floating`**: 他アプリが前面のまま、パネルだけ最前面に浮いて入力できる
-- **borderless ウィンドウ**: タイトルバーなし、`fullSizeContentView` 相当の全面コンテンツ。丸角・影は手動設定
-- **`LSUIElement = true`**: Dock に表示しない。邪魔にならない
-- **送信方式**: クリップボード + AppleScript でメニューバー「Paste」をクリック。`keystroke` より確実。失敗時は `keystroke` にフォールバック
-- **PID でプロセス特定**: アプリ名ではなく `unix id` でプロセスを特定し、ローカライズ問題を回避
-- **クリップボード退避・復元**: 元内容を壊さない
-- **パネル一時非表示**: 送信時にパネルを `orderOut` し、キーイベントがパネルに吸われないようにする
-- **`PlainTextEditor`**: SwiftUI `TextEditor` は内部余白が固定で調整困難なため、`NSTextView` を直接ラップ。`textContainerInset` と `lineFragmentPadding` で余白を制御
-- **選択範囲追跡**: `textViewDidChangeSelection` で選択テキストを常時同期
+- **`NSPanel` + `nonactivatingPanel` + `level = .floating`**: the panel floats on top while other apps stay frontmost and accept input
+- **Borderless window**: no title bar, full-size content. Rounded corners and shadow are set manually
+- **`LSUIElement = true`**: does not appear in the Dock. Stays out of the way
+- **Send method**: clipboard + AppleScript clicking "Paste" in the menu bar. More reliable than `keystroke`. Falls back to `keystroke` on failure
+- **Identify process by PID**: targets the process via `unix id` instead of the app name to avoid localization mismatches
+- **Clipboard save/restore**: does not clobber the original contents
+- **Temporarily hide the panel**: the panel is `orderOut`-ed on send so key events are not swallowed by the panel
+- **`PlainTextEditor`**: SwiftUI's `TextEditor` has fixed internal padding that is hard to adjust, so `NSTextView` is wrapped directly. Padding is controlled via `textContainerInset` and `lineFragmentPadding`
+- **Selection tracking**: `textViewDidChangeSelection` continuously syncs the selected text
 
-## ファイル構成
+## File layout
 
 ```
 .
 ├── Sources/
 │   └── TextAreaApp/
-│       └── App.swift       # 全体実装（1ファイル・約850行）
+│       └── App.swift       # Entire implementation (single file, ~850 lines)
 ├── Resources/
-│   └── Info.plist          # バンドル設定・権限宣言
-├── build.sh                # ビルドスクリプト (swiftc 直接実行)
+│   └── Info.plist          # Bundle settings, permission declarations
+├── build.sh                # Build script (runs swiftc directly)
 └── README.md
 ```
 
-### App.swift の主要コンポーネント
+### Main components in App.swift
 
-| コンポーネント | 役割 |
+| Component | Role |
 |---|---|
-| `FloatingPanel` | `NSPanel` サブクラス。`canBecomeKey` / `canBecomeMain` をオーバーライド |
-| `AppState` | `ObservableObject`。テキスト・選択・送信先・ステータス・権限管理 |
-| `GlobalHotKeyManager` | Carbon API でグローバルホットキーを登録・管理。UI 設定可能 |
-| `HotKeyRecorder` | `NSViewRepresentable`。キー入力を capture して combo を記録 |
-| `WindowDragHandle` / `DragView` | 上部の透明ドラッグ領域 |
-| `ResizeHandle` / `ResizeView` | 右端・下端の透明リサイズ領域 |
-| `PlainTextEditor` | `NSTextView` をラップした余白制御可能なエディタ |
-| `ContentView` | SwiftUI ルートビュー。エディタ + overlay コントロール群 |
-| `AppDelegate` | パネル生成・ホットキー初期化 |
+| `FloatingPanel` | `NSPanel` subclass. Overrides `canBecomeKey` / `canBecomeMain` |
+| `AppState` | `ObservableObject`. Manages text, selection, destination, status, permissions |
+| `GlobalHotKeyManager` | Registers and manages a global hotkey via the Carbon API. UI-configurable |
+| `HotKeyRecorder` | `NSViewRepresentable`. Captures key input to record a combo |
+| `WindowDragHandle` / `DragView` | Transparent drag area at the top |
+| `ResizeHandle` / `ResizeView` | Transparent resize area on the right/bottom edges |
+| `PlainTextEditor` | Editor wrapping `NSTextView` with controllable padding |
+| `ContentView` | SwiftUI root view. Editor + overlay controls |
+| `AppDelegate` | Creates the panel, initializes the hotkey |
 
-## ビルド
+## Build
 
 ```bash
 ./build.sh
 ```
 
-`swiftc` で直接コンパイルし、`.app` バンドルを生成する。Xcode プロジェクト不要。
+Compiles directly with `swiftc` and produces a `.app` bundle. No Xcode project required.
 
-依存フレームワーク: SwiftUI, AppKit, ApplicationServices, Carbon
+Dependency frameworks: SwiftUI, AppKit, ApplicationServices, Carbon
 
-## 今後の拡張候補
+## Future ideas
 
-- ホットキー設定の永続化（`UserDefaults`）
-- ホットキークリアボタン
-- 送信後自動クリアオプション
-- 送信履歴
-- Apple Silicon ネイティブ（arm64）ビルド
-- 文字数カウント・マークダウンプレビュー
+- Persist hotkey settings (`UserDefaults`)
+- Hotkey clear button
+- Auto-clear option after send
+- Send history
+- Apple Silicon native (arm64) build
+- Character count, markdown preview

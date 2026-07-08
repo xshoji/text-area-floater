@@ -1,140 +1,140 @@
 # AGENTS.md
 
-このプロジェクトでエージェント（AI アシスタント）が作業する際の指針。
+Guidelines for agents (AI assistants) working in this project.
 
-## プロジェクト概要
+## Project overview
 
-**TextAreaFloater** は macOS 専用のフローティングテキストエリアアプリ。常に最前面に浮き、入力したテキストを任意のアプリへ送信（ペースト）できる。ターミナル等の入力しづらいアプリで、一旦このアプリで編集してから送信する用途。
+**TextAreaFloater** is a macOS-only floating text area app. It always floats on top and can send (paste) the text you type into any other application. Use it to edit text in this app first, then send it to apps that are awkward to type into, such as terminals.
 
-## 技術スタック
+## Tech stack
 
-- **言語**: Swift
+- **Language**: Swift
 - **UI**: SwiftUI + AppKit
-- **ビルド**: `swiftc` 直接実行（Xcode プロジェクトなし・SwiftPM なし）
-- **ターゲット**: macOS 13+ (Arm64 / x86_64)
-- **依存フレームワーク**: SwiftUI, AppKit, ApplicationServices, Carbon
+- **Build**: `swiftc` run directly (no Xcode project, no SwiftPM)
+- **Target**: macOS 13+ (Arm64 / x86_64)
+- **Dependency frameworks**: SwiftUI, AppKit, ApplicationServices, Carbon
 
-## ビルド・実行
+## Build & run
 
 ```bash
-./build.sh                    # ビルド
-open build/TextAreaFloater.app  # 起動
+./build.sh                    # build
+open build/TextAreaFloater.app  # launch
 ```
 
-ビルドログは標準出力・標準エラーに出力される。エラー時は末尾を確認:
+Build logs go to stdout/stderr. On error, check the tail:
 
 ```bash
 ./build.sh 2>&1 | tail -20
 ```
 
-## コード構成
+## Code layout
 
-全実装が `Sources/TextAreaApp/App.swift` 1ファイル（約850行）に集約。新機能追加も原則このファイルに追記する。ファイル分割は可読性が著しく損なわれるまで行わない。
+The entire implementation lives in a single file, `Sources/TextAreaApp/App.swift` (~850 lines). Add new features to this file in principle. Do not split files until readability is significantly degraded.
 
-### 主要コンポーネント
+### Main components
 
-| コンポーネント | 行付近 | 役割 |
+| Component | Around line | Role |
 |---|---|---|
-| `FloatingPanel` | 先頭付近 | `NSPanel` サブクラス |
-| `AppState` | 15行〜 | 状態管理・送信ロジック・権限管理 |
-| `GlobalHotKeyManager` | 246行〜 | Carbon API によるホットキー管理 |
-| `HotKeyRecorder` | 400行付近 | キー入力 capture |
-| `WindowDragHandle` / `ResizeHandle` | 440行〜 | ウィンドウ操作 |
-| `PlainTextEditor` | 542行〜 | `NSTextView` ラッパー |
-| `ContentView` | 611行〜 | SwiftUI ルートビュー |
-| `AppDelegate` | 710行〜 | パネル生成・初期化 |
+| `FloatingPanel` | Top | `NSPanel` subclass |
+| `AppState` | 15+ | State management, send logic, permission management |
+| `GlobalHotKeyManager` | 246+ | Hotkey management via the Carbon API |
+| `HotKeyRecorder` | ~400 | Key input capture |
+| `WindowDragHandle` / `ResizeHandle` | 440+ | Window controls |
+| `PlainTextEditor` | 542+ | `NSTextView` wrapper |
+| `ContentView` | 611+ | SwiftUI root view |
+| `AppDelegate` | 710+ | Panel creation, initialization |
 
-## コーディング規約
+## Coding conventions
 
 ### Swift
 
-- Swift 5 記法（`@MainActor`, `ObservableObject`, `NSViewRepresentable` を活用）
-- `@MainActor` は UI 操作・AppKit API を呼ぶクラスに付与
-- `nonisolated` は Carbon コールバック等、メインアクター外で呼ばれる必要があるものに限定
-- Sendable 警告は出さない（`nonisolated(unsafe)` で必要に応じて抑制）
-- コメントは日本語で記述
+- Swift 5 style (use `@MainActor`, `ObservableObject`, `NSViewRepresentable`)
+- Apply `@MainActor` to classes that touch UI or call AppKit APIs
+- Limit `nonisolated` to things that must be called off the main actor, such as Carbon callbacks
+- Do not emit Sendable warnings (suppress with `nonisolated(unsafe)` as needed)
+- Write comments in English
 
 ### SwiftUI
 
-- `overlay(alignment:)` でコントロールを浮かせる（VStack/HStack で全面レイアウトを組まない）
-- `.background(.regularMaterial, in: Capsule())` でマテリアル背景のカプセル
-- `keyboardShortcut` でショートカット定義
-- `popover` の `isPresented` は `let` プロパティの `@Published` に直接 bind できないため `Binding(get:set:)` を使う
+- Float controls with `overlay(alignment:)` (do not build the full layout with VStack/HStack)
+- Use `.background(.regularMaterial, in: Capsule())` for a material-background capsule
+- Define shortcuts with `keyboardShortcut`
+- `popover`'s `isPresented` cannot bind directly to a `@Published` on a `let` property, so use `Binding(get:set:)`
 
 ### AppKit
 
-- `NSPanel` は `borderless` + `nonactivatingPanel`。タイトルバーなし
-- 丸角・影・背景は `borderless` だと消えるので手動設定:
+- `NSPanel` is `borderless` + `nonactivatingPanel`. No title bar
+- Rounded corners, shadow, and background disappear with `borderless`, so set them manually:
     - `isOpaque = false`
     - `backgroundColor = .clear`
     - `hasShadow = true`
-- `isMovableByWindowBackground = true` は `TextEditor` がマウスを消費するため効かない。専用のドラッグ領域を置く
-- `NSViewRepresentable` で AppKit ビューを SwiftUI に桥接
+- `isMovableByWindowBackground = true` does not work because `TextEditor` consumes the mouse. Place a dedicated drag area
+- Bridge AppKit views into SwiftUI with `NSViewRepresentable`
 
-## 送信ロジック
+## Send logic
 
-### フロー
+### Flow
 
-1. アクセシビリティ権限チェック（`AXIsProcessTrusted`）
-2. 送信内容決定: 選択範囲があればそれだけ、なければ全体
-3. クリップボード退避 → テキストセット
-4. パネル一時非表示（`orderOut`）→ 対象アプリアクティブ化
-5. 0.4秒待って AppleScript でペースト:
-    - 方法1: メニューバー「Paste」をクリック（`click menu item "Paste" of menu "Edit" of menu bar 1`）
-    - 方法2（フォールバック）: `keystroke "v" using command down`
-6. `sendEnterAfterPaste` がオンなら更に `keystroke return`
-7. クリップボード復元 → パネル再表示
+1. Check accessibility permission (`AXIsProcessTrusted`)
+2. Determine what to send: if there is a selection, only that; otherwise everything
+3. Save the clipboard → set the text
+4. Temporarily hide the panel (`orderOut`) → activate the target app
+5. Wait 0.4s, then paste via AppleScript:
+    - Method 1: click "Paste" in the menu bar (`click menu item "Paste" of menu "Edit" of menu bar 1`)
+    - Method 2 (fallback): `keystroke "v" using command down`
+6. If `sendEnterAfterPaste` is on, additionally `keystroke return`
+7. Restore the clipboard → show the panel again
 
-### AppleScript のポイント
+### AppleScript notes
 
-- プロセスは **PID（`unix id`）** で特定。アプリ名だとローカライズで不一致になる
-- `tell application id "..." to activate` ではなく `NSRunningApplication.activate()` でアクティブ化し、AppleScript はペースト操作のみに使う
-- `NSAppleScript.executeAndReturnError` のエラー辞書から `NSAppleScript.errorMessage` を取り出して表示
+- Identify the process by **PID (`unix id`)**. The app name can mismatch due to localization
+- Activate with `NSRunningApplication.activate()` instead of `tell application id "..." to activate`, and use AppleScript only for the paste operation
+- Extract `NSAppleScript.errorMessage` from the error dictionary of `NSAppleScript.executeAndReturnError` and display it
 
-## 権限
+## Permissions
 
-| 権限 | 用途 | API |
+| Permission | Purpose | API |
 |---|---|---|
-| アクセシビリティ | AppleScript で他アプリ操作 | `AXIsProcessTrusted()` / `AXIsProcessTrustedWithOptions` |
-| 入力監視 | グローバルホットキー | Carbon `RegisterEventHotKey`（実行時にプロンプト） |
+| Accessibility | Operate other apps via AppleScript | `AXIsProcessTrusted()` / `AXIsProcessTrustedWithOptions` |
+| Input Monitoring | Global hotkey | Carbon `RegisterEventHotKey` (prompted at runtime) |
 
-権限未許可時はステータスバーに `⚠️` 付きで表示し、システム設定画面を自動で開く。
+When permission is not granted, show `⚠️` in the status bar and open System Settings automatically.
 
-## よくある落とし穴
+## Common pitfalls
 
-### `NSRectEdge` のケース名
+### `NSRectEdge` case names
 
-SDK バージョンによってケース名が異なる:
+Case names differ by SDK version:
 
 - SDK 26+: `.maxX` / `.minY` / `.maxY` / `.minX`
-- 旧 SDK: `.maxXEdge` / `.minYEdge` 等
+- Older SDK: `.maxXEdge` / `.minYEdge`, etc.
 
-ビルドエラーになったら SDK の提案に従う。
+If the build errors, follow the SDK's suggestion.
 
-### `performDrag` は移動であってリサイズではない
+### `performDrag` is move, not resize
 
-`window?.performDrag(with:)` はウィンドウ移動。リサイズは `mouseDragged` で `window.setFrame` を直接呼ぶ。
+`window?.performDrag(with:)` moves the window. To resize, call `window.setFrame` directly in `mouseDragged`.
 
-### SwiftUI `TextEditor` の余白
+### SwiftUI `TextEditor` padding
 
-`TextEditor` は `textContainerInset` と `lineFragmentPadding` が固定で、`.padding(-x)` で無理やり相殺するとクリッピングする。`NSViewRepresentable` で `NSTextView` を直接ラップして制御する。
+`TextEditor` has fixed `textContainerInset` and `lineFragmentPadding`; forcing an offset with `.padding(-x)` causes clipping. Wrap `NSTextView` directly with `NSViewRepresentable` to control it.
 
-### `popover` の `isPresented` と `let` プロパティ
+### `popover`'s `isPresented` and `let` properties
 
-`@StateObject` / `@EnvironmentObject` の `let` プロパティ内の `@Published` には `$` bind が使えない。`Binding(get:set:)` で明示的に取得・設定する。
+You cannot use `$` binding on a `@Published` inside a `let` property of a `@StateObject` / `@EnvironmentObject`. Use `Binding(get:set:)` to get and set explicitly.
 
-## 変更時のチェックリスト
+## Checklist for changes
 
-- [ ] `./build.sh` が警告・エラーなしで完了する
-- [ ] アプリ起動後、テキスト編集・送信が動作する
-- [ ] ウィンドウ移動・リサイズが動作する
-- [ ] ホットキー設定・動作が機能する
-- [ ] 選択範囲送信が動作する
-- [ ] Enter 確定オプションが動作する
+- [ ] `./build.sh` completes with no warnings or errors
+- [ ] After launch, text editing and sending work
+- [ ] Window move and resize work
+- [ ] Hotkey configuration and behavior work
+- [ ] Selection-only send works
+- [ ] Enter confirm option works
 
-## やらないこと
+## Non-goals
 
-- Xcode プロジェクトの導入（`swiftc` 直接ビルドを維持）
-- ファイルの過剰な分割（1ファイル構成を維持）
-- クロスプラットフォーム対応（macOS 専用）
-- 外部依存の追加（標準フレームワークのみ）
+- Introducing an Xcode project (keep direct `swiftc` builds)
+- Excessive file splitting (keep the single-file structure)
+- Cross-platform support (macOS only)
+- Adding external dependencies (standard frameworks only)
