@@ -28,6 +28,9 @@ swiftc \
 echo "==> Info.plist コピー"
 cp Resources/Info.plist "$APP_DIR/Contents/Info.plist"
 
+echo "==> アイコンコピー"
+cp Resources/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
+
 echo ""
 echo "==> ビルド完了: $APP_DIR"
 echo "起動: open $APP_DIR"
