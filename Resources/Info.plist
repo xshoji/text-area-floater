@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>TextAreaFloater</string>
+    <key>CFBundleDisplayName</key>
+    <string>TextArea</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.local.textareafloater</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleExecutable</key>
+    <string>TextAreaFloater</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <!-- Dock に表示せず、メニューバーアプリ的に振る舞う -->
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <!-- 入力監視: CGEvent 投稿のために必要。実行時にシステム設定で許可を求める -->
+    <!-- 権限は実行時にプロンプトが出るので Info.plist 宣言は不要だが、
+         最近の macOS では下記キーで説明を表示できる場合がある -->
+    <key>NSInputMonitoringUsageDescription</key>
+    <string>テキストを他のアプリへ送信するためにキーイベントを投稿します。</string>
+    <!-- アクセシビリティ: AppleScript (System Events) で他アプリを操作するために必要 -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>他のアプリへテキストを送信するために使用します。</string>
+</dict>
+</plist>
