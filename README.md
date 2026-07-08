@@ -2,6 +2,10 @@
 
 A simple text area that always floats on top. A macOS-only app that lets you send (paste) the text you type into any other application.
 
+[demo.mp4](https://github.com/user-attachments/assets/51271fe0-d4d0-45bf-bb70-7670ddf58d7a)
+
+
+
 ## Problem it solves
 
 Some applications, such as terminals, make text input awkward:
